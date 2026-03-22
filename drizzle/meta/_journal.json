@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1768465822997,
+      "tag": "0000_curvy_nextwave",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1768472452661,
+      "tag": "0001_remarkable_vin_gonzales",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1768478975641,
+      "tag": "0002_regular_barracuda",
+      "breakpoints": true
+    }
+  ]
+}
