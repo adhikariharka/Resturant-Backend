@@ -1,0 +1,2 @@
+ALTER TABLE "restaurant_settings" ADD COLUMN "is_temporary_closed" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "staff" ADD COLUMN "permissions" jsonb DEFAULT '[]'::jsonb NOT NULL;
