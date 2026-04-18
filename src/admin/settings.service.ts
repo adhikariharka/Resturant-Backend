@@ -26,7 +26,14 @@ export class SettingsService {
         return settings;
     }
 
-    async updateSettings(data: { taxRate?: number; serviceCharge?: number }) {
+    async updateSettings(data: {
+        taxRate?: number;
+        serviceCharge?: number;
+        deliveryFee?: number;
+        freeDeliveryThreshold?: number;
+        minOrderAmount?: number;
+        currency?: string;
+    }) {
         const settings = await this.getSettings();
 
         const [updated] = await this.db.update(restaurantSettings)

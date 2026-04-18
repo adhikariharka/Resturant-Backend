@@ -65,33 +65,41 @@ export class OrdersService {
             const settings = await this.settingsService.getSettings();
             const taxRate = settings.taxRate || 0.20;
             const serviceChargeRate = settings.serviceCharge || 0.10;
+            const configuredDeliveryFee = (settings as any).deliveryFee ?? 3.5;
+            const freeDeliveryThreshold = (settings as any).freeDeliveryThreshold ?? Infinity;
 
             const tax = subtotal * taxRate;
             const serviceCharge = subtotal * serviceChargeRate;
-            const deliveryFee = 3.5; // TODO: Delivery fee logic/settings
+            const deliveryFee = subtotal >= freeDeliveryThreshold ? 0 : configuredDeliveryFee;
             const total = subtotal + tax + serviceCharge + deliveryFee;
 
-            // Determine initial status
-            const initialStatus = createOrderDto.paymentMethod === 'card' ? 'pending_payment' : 'confirmed';
+            // Determine initial status & payment state
+            const isCard = createOrderDto.paymentMethod === 'card';
+            const initialStatus = isCard ? 'pending_payment' : 'confirmed';
+            const initialPaymentStatus = isCard ? 'pending' : 'pending'; // Cash marks paid on delivery
 
             // 3. Create Order
             const [order] = await tx.insert(orders).values({
                 orderNumber: `ORD-${Date.now()}`,
                 userId: createOrderDto.userId,
                 status: initialStatus,
+                paymentStatus: initialPaymentStatus,
                 subtotal: subtotal,
                 tax: tax,
                 serviceCharge: serviceCharge,
+                deliveryFee: deliveryFee,
                 total: total,
                 deliveryAddress: createOrderDto.deliveryAddress,
                 paymentMethod: createOrderDto.paymentMethod,
             }).returning();
 
-            // 4. Create Order Items
+            // 4. Create Order Items (with historical snapshot of name + image)
             for (const item of orderItemsData) {
                 await tx.insert(orderItems).values({
                     orderId: order.id,
                     foodItemId: item.foodItemId,
+                    itemName: item.foodItem?.name ?? null,
+                    itemImage: item.foodItem?.image ?? null,
                     quantity: item.quantity,
                     selectedOptions: item.selectedOptions,
                     priceAtOrder: item.priceAtOrder
@@ -238,7 +246,7 @@ export class OrdersService {
                 // Check if already confirmed to avoid redundant updates?
                 // For now, idempotent update is fine.
                 await tx.update(orders)
-                    .set({ status: 'confirmed' })
+                    .set({ status: 'confirmed', paymentStatus: 'paid', stripeSessionId: session.id, updatedAt: new Date() })
                     .where(eq(orders.id, orderId));
 
                 if (userId) {
@@ -308,7 +316,7 @@ export class OrdersService {
 
     async updateStatus(id: string, status: typeof orders.$inferSelect.status) {
         const [updatedOrder] = await this.db.update(orders)
-            .set({ status })
+            .set({ status, updatedAt: new Date() })
             .where(eq(orders.id, id))
             .returning();
         return updatedOrder;
