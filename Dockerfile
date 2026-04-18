@@ -29,7 +29,7 @@ RUN npm ci --omit=dev --no-audit --no-fund \
 # ---------- 4. Runtime image ----------
 FROM node:22-alpine AS runner
 ENV NODE_ENV=production
-ENV PORT=8000
+ENV PORT=8001
 WORKDIR /app
 
 # Non-root user is already baked into the node image
@@ -39,5 +39,5 @@ COPY --chown=node:node --from=prod-deps /app/node_modules ./node_modules
 COPY --chown=node:node --from=builder /app/dist ./dist
 COPY --chown=node:node package.json ./
 
-EXPOSE 8000
+EXPOSE 8001
 CMD ["node", "dist/main.js"]
