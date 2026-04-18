@@ -4,7 +4,36 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import * as bcrypt from 'bcrypt';
 import { eq, sql } from 'drizzle-orm';
+import { readFileSync, existsSync } from 'fs';
+import { join } from 'path';
 import * as schema from '../drizzle/schema';
+
+// ---------- image backup ----------
+// Optional JSON file produced by `npm run db:backup-images`. If present, its
+// URLs override the hardcoded defaults by slug, so manual Cloudinary uploads
+// survive a re-seed.
+interface ImageBackup {
+    categories?: Record<string, string>;
+    foodItems?: Record<string, string>;
+}
+const BACKUP_PATH = join(__dirname, 'data', 'image-backup.json');
+let imageBackup: ImageBackup = { categories: {}, foodItems: {} };
+if (existsSync(BACKUP_PATH)) {
+    try {
+        imageBackup = JSON.parse(readFileSync(BACKUP_PATH, 'utf8'));
+        console.log(
+            `📸  Image backup loaded: ${Object.keys(imageBackup.categories ?? {}).length} categories, ${Object.keys(imageBackup.foodItems ?? {}).length} items.`,
+        );
+    } catch (e) {
+        console.warn('⚠️  Could not parse image backup — proceeding with defaults.', e);
+    }
+} else {
+    console.log('ℹ️  No image backup found at', BACKUP_PATH, '— using default URLs.');
+}
+const categoryImage = (slug: string, fallback?: string) =>
+    imageBackup.categories?.[slug] ?? fallback;
+const foodImage = (slug: string, fallback: string) =>
+    imageBackup.foodItems?.[slug] ?? fallback;
 
 if (!process.env.DATABASE_URL) {
     throw new Error('DATABASE_URL is not set in environment variables');
@@ -396,7 +425,16 @@ async function seedMenu() {
         },
     ];
 
-    const insertedCategories = await db.insert(schema.categories).values(categoriesData).returning();
+    // Override images from the backup file if the slug is present there.
+    const categoriesWithBackup = categoriesData.map((c) => ({
+        ...c,
+        image: categoryImage(c.slug, c.image),
+    }));
+
+    const insertedCategories = await db
+        .insert(schema.categories)
+        .values(categoriesWithBackup)
+        .returning();
     const catMap = new Map(insertedCategories.map((c) => [c.slug, c.id]));
 
     // ---------------- Food items ----------------
@@ -435,7 +473,7 @@ async function seedMenu() {
         },
         {
             name: 'Soup of the Day',
-            slug: 'soup-day',
+            slug: 'soup-of-the-day',
             description: 'Freshly made soup — ask your server — with crusty sourdough.',
             price: 7.0,
             categorySlug: 'starters',
@@ -474,7 +512,7 @@ async function seedMenu() {
         },
         {
             name: 'Chicken Liver Pâté',
-            slug: 'chicken-pate',
+            slug: 'chicken-liver-pate',
             description: 'House-made pâté with Madeira jelly and toasted brioche.',
             price: 9.0,
             categorySlug: 'starters',
@@ -489,7 +527,7 @@ async function seedMenu() {
         // ======= BRITISH CLASSICS =======
         {
             name: 'Traditional Fish & Chips',
-            slug: 'fish-and-chips',
+            slug: 'traditional-fish-chips',
             description: 'Beer-battered cod, chunky chips, mushy peas, and tartare sauce.',
             price: 16.5,
             discountPrice: 14.95,
@@ -504,7 +542,7 @@ async function seedMenu() {
         },
         {
             name: 'Bangers & Mash',
-            slug: 'sausage-and-mash',
+            slug: 'bangers-mash',
             description: 'Cumberland sausages, creamy mash, and rich onion gravy.',
             price: 14.5,
             categorySlug: 'classics',
@@ -712,7 +750,7 @@ async function seedMenu() {
         },
         {
             name: 'Vegetable Biryani',
-            slug: 'veg-biryani',
+            slug: 'vegetable-biryani',
             description: 'Saffron basmati layered with spiced seasonal vegetables, raita.',
             price: 13.5,
             categorySlug: 'curry',
@@ -769,7 +807,7 @@ async function seedMenu() {
         // ======= SIDES =======
         {
             name: 'Triple-cooked Chips',
-            slug: 'chunky-chips',
+            slug: 'triple-cooked-chips',
             description: 'Crunchy outside, fluffy inside, flaked sea salt.',
             price: 4.5,
             categorySlug: 'sides',
@@ -794,7 +832,7 @@ async function seedMenu() {
         },
         {
             name: 'Yorkshire Puddings',
-            slug: 'yorkshire-puds',
+            slug: 'yorkshire-puddings',
             description: 'Three crispy Yorkies with a jug of gravy.',
             price: 3.5,
             categorySlug: 'sides',
@@ -955,7 +993,7 @@ async function seedMenu() {
         // ======= KIDS =======
         {
             name: 'Fish Fingers & Chips',
-            slug: 'kids-fish-fingers',
+            slug: 'fish-fingers-chips',
             description: 'Cod fish fingers, chips, peas. Little-portion.',
             price: 6.95,
             categorySlug: 'kids',
@@ -1003,7 +1041,7 @@ async function seedMenu() {
                 description: f.description,
                 price: f.price,
                 discountPrice: f.discountPrice,
-                image: f.image,
+                image: foodImage(f.slug, f.image),
                 categoryId: catMap.get(f.categorySlug)!,
                 isAvailable: f.isAvailable ?? true,
                 isPopular: f.isPopular ?? false,
@@ -1051,14 +1089,14 @@ async function seedMenu() {
         optionRows.push({ ...o, foodItemId: fi.id });
     };
 
-    addOption('fish-and-chips', {
+    addOption('traditional-fish-chips', {
         name: 'Portion size',
         isRequired: true,
         allowMultiple: false,
         displayOrder: 1,
         choices: sizeChoices,
     });
-    addOption('fish-and-chips', {
+    addOption('traditional-fish-chips', {
         name: 'Extras',
         isRequired: false,
         allowMultiple: true,
@@ -1146,7 +1184,7 @@ async function seedOrdersAndReviews(foodBySlug: Map<string, typeof schema.foodIt
     }> = [
             {
                 userEmail: 'james@example.com',
-                itemSlugs: [['fish-and-chips', 2], ['sticky-toffee-pudding', 1]],
+                itemSlugs: [['traditional-fish-chips', 2], ['sticky-toffee-pudding', 1]],
                 status: 'placed',
                 paymentStatus: 'paid',
                 paymentMethod: 'card',
@@ -1163,7 +1201,7 @@ async function seedOrdersAndReviews(foodBySlug: Map<string, typeof schema.foodIt
             },
             {
                 userEmail: 'oliver@example.com',
-                itemSlugs: [['chicken-tikka-masala', 1], ['veg-biryani', 1], ['garlic-bread', 1]],
+                itemSlugs: [['chicken-tikka-masala', 1], ['vegetable-biryani', 1], ['garlic-bread', 1]],
                 status: 'cooking',
                 paymentStatus: 'paid',
                 paymentMethod: 'card',
@@ -1189,7 +1227,7 @@ async function seedOrdersAndReviews(foodBySlug: Map<string, typeof schema.foodIt
             // Recent delivered orders → eligible for review
             {
                 userEmail: 'james@example.com',
-                itemSlugs: [['sausage-and-mash', 1], ['chunky-chips', 1]],
+                itemSlugs: [['bangers-mash', 1], ['triple-cooked-chips', 1]],
                 status: 'delivered',
                 paymentStatus: 'paid',
                 paymentMethod: 'card',
@@ -1197,7 +1235,7 @@ async function seedOrdersAndReviews(foodBySlug: Map<string, typeof schema.foodIt
             },
             {
                 userEmail: 'emily@example.com',
-                itemSlugs: [['fish-and-chips', 1], ['apple-crumble', 1]],
+                itemSlugs: [['traditional-fish-chips', 1], ['apple-crumble', 1]],
                 status: 'delivered',
                 paymentStatus: 'paid',
                 paymentMethod: 'card',
@@ -1346,7 +1384,7 @@ async function seedSampleCart(foodBySlug: Map<string, typeof schema.foodItems.$i
 
     const items: Array<[string, number]> = [
         ['shepherds-pie', 1],
-        ['yorkshire-puds', 2],
+        ['yorkshire-puddings', 2],
         ['elderflower-fizz', 1],
     ];
 
