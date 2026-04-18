@@ -8,14 +8,12 @@ import { CreateUserDto } from './dto/create-user.dto';
 export class UsersService {
     constructor(@Inject(DRIZZLE) private db: any) { }
 
+    // Used internally by auth.service.register() + loginGoogle().
     async create(createUserDto: CreateUserDto) {
         return this.db.insert(users).values(createUserDto).returning();
     }
 
-    async findAll() {
-        return this.db.query.users.findMany();
-    }
-
+    // Used internally by whoami().
     async findOne(id: string) {
         return this.db.query.users.findFirst({
             where: eq(users.id, id),

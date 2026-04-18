@@ -133,64 +133,59 @@ async function seedHolidays() {
 // ============================================================================
 async function seedStaff() {
     console.log('⏳ Seeding Staff…');
-    const existing = await db.select({ username: schema.staff.username }).from(schema.staff);
-    const existingUsernames = new Set(existing.map((s) => s.username));
+    const existing = await db.select({ email: schema.staff.email }).from(schema.staff);
+    const existingEmails = new Set(existing.map((s) => s.email));
 
     const hash = (plain: string) => bcrypt.hash(plain, 10);
 
     const accounts = [
         {
-            username: 'kitchen',
+            email: 'kitchen@thebritishkitchen.co.uk',
             password: await hash('kitchen123'),
             name: 'Gordon (Head Chef)',
-            email: 'kitchen@thebritishkitchen.co.uk',
             phone: '+44 7700 900001',
             role: 'staff' as const,
             permissions: ['kitchen'],
         },
         {
-            username: 'kitchen2',
+            email: 'priya@thebritishkitchen.co.uk',
             password: await hash('kitchen123'),
             name: 'Priya (Sous Chef)',
-            email: 'priya@thebritishkitchen.co.uk',
             phone: '+44 7700 900002',
             role: 'staff' as const,
             permissions: ['kitchen'],
         },
         {
-            username: 'delivery',
+            email: 'marcus@thebritishkitchen.co.uk',
             password: await hash('delivery123'),
             name: 'Marcus (Rider)',
-            email: 'marcus@thebritishkitchen.co.uk',
             phone: '+44 7700 900003',
             role: 'staff' as const,
             permissions: ['delivery'],
         },
         {
-            username: 'delivery2',
+            email: 'sofia@thebritishkitchen.co.uk',
             password: await hash('delivery123'),
             name: 'Sofia (Rider)',
-            email: 'sofia@thebritishkitchen.co.uk',
             phone: '+44 7700 900004',
             role: 'staff' as const,
             permissions: ['delivery'],
         },
         {
-            username: 'manager',
+            email: 'manager@thebritishkitchen.co.uk',
             password: await hash('manager123'),
             name: 'Olivia (Floor Manager)',
-            email: 'olivia@thebritishkitchen.co.uk',
             phone: '+44 7700 900005',
             role: 'admin' as const,
             permissions: ['kitchen', 'delivery', 'admin'],
         },
     ];
 
-    const toInsert = accounts.filter((a) => !existingUsernames.has(a.username));
+    const toInsert = accounts.filter((a) => !existingEmails.has(a.email));
     if (toInsert.length) {
         await db.insert(schema.staff).values(toInsert);
     }
-    console.log(`✅ Staff seeded (${toInsert.length} new, ${existingUsernames.size} already existed).`);
+    console.log(`✅ Staff seeded (${toInsert.length} new, ${existingEmails.size} already existed).`);
 }
 
 // ============================================================================
@@ -1404,12 +1399,12 @@ async function main() {
         console.log('🔑 Test credentials');
         console.log('   Admin (customer-side):   admin@thebritishkitchen.co.uk / admin123');
         console.log('   Customer:                james@example.com / password123');
-        console.log('   Staff portal:');
-        console.log('     - kitchen / kitchen123     (kitchen permissions)');
-        console.log('     - kitchen2 / kitchen123    (kitchen permissions)');
-        console.log('     - delivery / delivery123   (delivery permission)');
-        console.log('     - delivery2 / delivery123  (delivery permission)');
-        console.log('     - manager / manager123     (admin — all permissions)');
+        console.log('   Staff portal (email + password):');
+        console.log('     - kitchen@thebritishkitchen.co.uk / kitchen123   (kitchen)');
+        console.log('     - priya@thebritishkitchen.co.uk   / kitchen123   (kitchen)');
+        console.log('     - marcus@thebritishkitchen.co.uk  / delivery123  (delivery)');
+        console.log('     - sofia@thebritishkitchen.co.uk   / delivery123  (delivery)');
+        console.log('     - manager@thebritishkitchen.co.uk / manager123   (admin)');
     } catch (error) {
         console.error('\n💥 Seed failed:', error);
         process.exit(1);

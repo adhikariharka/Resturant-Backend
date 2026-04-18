@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Request, Headers } from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    ForbiddenException,
+    Get,
+    Headers,
+    NotFoundException,
+    Param,
+    Post,
+    Request,
+    UseGuards,
+} from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
@@ -19,9 +30,10 @@ export class OrdersController {
     ) { }
 
     @Post()
-    @ApiOperation({ summary: 'Create order' })
-    create(@Body() createOrderDto: CreateOrderDto) {
-        return this.ordersService.create(createOrderDto);
+    @ApiOperation({ summary: 'Create order — order is placed for the authenticated user' })
+    create(@Body() createOrderDto: CreateOrderDto, @Request() req: any) {
+        // Always tie the order to the authenticated user. Ignore any userId in the body.
+        return this.ordersService.create({ ...createOrderDto, userId: req.user.userId });
     }
 
     @Get()
@@ -33,15 +45,21 @@ export class OrdersController {
     @Get('all')
     @UseGuards(RolesGuard)
     @Roles('admin', 'staff')
-    @ApiOperation({ summary: 'List all orders (Admin)' })
+    @ApiOperation({ summary: 'List all orders (admin/staff)' })
     findAllAdmin() {
         return this.ordersService.findAll();
     }
 
     @Get(':id')
-    @ApiOperation({ summary: 'Get order details' })
-    findOne(@Param('id') id: string) {
-        return this.ordersService.findOne(id);
+    @ApiOperation({ summary: 'Get order details (owner or admin/staff)' })
+    async findOne(@Param('id') id: string, @Request() req: any) {
+        const order = await this.ordersService.findOne(id);
+        if (!order) throw new NotFoundException('Order not found.');
+        const isPrivileged = req.user.role === 'admin' || req.user.role === 'staff';
+        if (!isPrivileged && order.userId !== req.user.userId) {
+            throw new ForbiddenException('You cannot view this order.');
+        }
+        return order;
     }
     @Post('verify-payment')
     @ApiOperation({ summary: 'Verify Stripe Payment' })

@@ -34,7 +34,7 @@ export class StaffOrdersController {
             user.role === 'admin';
 
         if (!allowed) {
-            console.warn(`User ${user.username} tried to set status ${status} without permission`);
+            console.warn(`User ${user.email ?? user.sub} tried to set status ${status} without permission`);
             // throw new ForbiddenException('You do not have permission'); 
         }
 

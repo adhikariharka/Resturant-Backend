@@ -354,10 +354,9 @@ export const staff = pgTable(
   'staff',
   {
     id: uuid('id').defaultRandom().primaryKey(),
-    username: text('username').unique().notNull(),
+    email: text('email').unique().notNull(),
     password: text('password').notNull(),
     name: text('name').notNull(),
-    email: text('email'),
     phone: text('phone'),
     role: roleEnum('role').default('staff').notNull(),
     permissions: jsonb('permissions').$type<string[]>().default([]).notNull(), // e.g. ['kitchen', 'delivery']
