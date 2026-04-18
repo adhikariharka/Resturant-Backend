@@ -1,8 +1,28 @@
 node_modules
 dist
-npm-debug.log
-Dockerfile
-docker-compose.yml
+coverage
 .git
 .gitignore
+.vscode
+.idea
+
+# env & secrets — pass at runtime via `--env-file` or compose env_file
+.env
+.env.*
+!.env.example
+
+# logs & caches
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# docker / ci
+Dockerfile
+docker-compose*.yml
+.dockerignore
+README.md
+
+# tests
 test
+**/*.spec.ts

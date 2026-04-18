@@ -10,7 +10,7 @@ export class PaymentsService {
         // Fallback for dev if env is missing, but should be in .env
         const secretKey = this.configService.get<string>('STRIPE_SECRET_KEY') || 'sk_test_placeholder';
         this.stripe = new Stripe(secretKey, {
-            // apiVersion: '2025-01-27.acacia', // Latest or pinned version
+            apiVersion: '2026-03-25.dahlia' as Stripe.LatestApiVersion,
         });
     }
 
